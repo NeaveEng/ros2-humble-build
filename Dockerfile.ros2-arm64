@@ -1,0 +1,70 @@
+# Dockerfile for building ROS2 Humble on x86_64 for ARM64 target
+FROM debian:trixie
+
+# Set to non-interactive
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install dependencies
+RUN apt update && apt install -y \
+    python3-flake8-docstrings \
+    python3-pip \
+    python3-pytest-cov \
+    python3-setuptools \
+    python3-venv \
+    wget \
+    build-essential \
+    cmake \
+    git \
+    libbullet-dev \
+    python3-flake8 \
+    python3-pytest-repeat \
+    python3-pytest-rerunfailures \
+    libasio-dev \
+    libtinyxml2-dev \
+    libcunit1-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create virtual environment
+RUN python3 -m venv /opt/ros2_venv
+ENV PATH="/opt/ros2_venv/bin:$PATH"
+
+# Install Python dependencies with version pins
+RUN pip3 install --no-cache-dir \
+    "setuptools<75.0.0" \
+    "pytest<9.0.0" \
+    empy==3.3.4 \
+    lark-parser \
+    rosdep \
+    vcstool \
+    colcon-common-extensions
+
+# Initialize rosdep
+RUN rosdep init || true
+RUN rosdep update
+
+# Create workspace
+WORKDIR /root/ros2_humble
+RUN mkdir -p src
+
+# Download ROS2 source
+RUN wget https://raw.githubusercontent.com/ros2/ros2/humble/ros2.repos
+RUN vcs import src < ros2.repos
+
+# Set ROS_DISTRO
+ENV ROS_DISTRO=humble
+
+# Install dependencies
+RUN rosdep install --from-paths src --ignore-src -r -y \
+    --skip-keys "fastcdr rti-connext-dds-6.0.1 urdfdom_headers ignition-math6 ignition-cmake2"
+
+# Build ROS2 (all packages - you can trim later)
+RUN colcon build --symlink-install \
+    --cmake-args -DCMAKE_BUILD_TYPE=Release
+
+# Optional: Remove GUI packages for headless deployment (uncomment to save space)
+# RUN cd install && rm -rf rviz* rqt* qt_gui* visualization_msgs_rviz_plugins
+
+# Create tarball of installation
+RUN tar -czf /ros2_humble_arm64.tar.gz install/
+
+CMD ["/bin/bash"]
