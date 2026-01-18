@@ -1,16 +1,14 @@
 # Dockerfile for building ROS2 Humble on x86_64 for ARM64 target
-FROM debian:trixie
+FROM ubuntu:22.04
 
 # Set to non-interactive
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install dependencies
+# Install dependencies (using apt packages for all ROS2 tooling)
 RUN apt update && apt install -y \
     python3-flake8-docstrings \
-    python3-pip \
     python3-pytest-cov \
     python3-setuptools \
-    python3-venv \
     wget \
     build-essential \
     cmake \
@@ -22,21 +20,11 @@ RUN apt update && apt install -y \
     libasio-dev \
     libtinyxml2-dev \
     libcunit1-dev \
+    python3-dev \
+    python3-rosdep \
+    python3-vcstool \
+    python3-colcon-common-extensions \
     && rm -rf /var/lib/apt/lists/*
-
-# Create virtual environment
-RUN python3 -m venv /opt/ros2_venv
-ENV PATH="/opt/ros2_venv/bin:$PATH"
-
-# Install Python dependencies with version pins
-RUN pip3 install --no-cache-dir \
-    "setuptools<75.0.0" \
-    "pytest<9.0.0" \
-    empy==3.3.4 \
-    lark-parser \
-    rosdep \
-    vcstool \
-    colcon-common-extensions
 
 # Initialize rosdep
 RUN rosdep init || true
@@ -53,9 +41,9 @@ RUN vcs import src < ros2.repos
 # Set ROS_DISTRO
 ENV ROS_DISTRO=humble
 
-# Install dependencies
+# Install dependencies (removed most skip-keys since Python 3.10 is now available)
 RUN rosdep install --from-paths src --ignore-src -r -y \
-    --skip-keys "fastcdr rti-connext-dds-6.0.1 urdfdom_headers ignition-math6 ignition-cmake2"
+    --skip-keys "fastcdr rti-connext-dds-6.0.1 urdfdom_headers"
 
 # Build ROS2 (all packages - you can trim later)
 RUN colcon build --symlink-install --parallel-workers $(nproc) \
