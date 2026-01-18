@@ -58,7 +58,7 @@ RUN rosdep install --from-paths src --ignore-src -r -y \
     --skip-keys "fastcdr rti-connext-dds-6.0.1 urdfdom_headers ignition-math6 ignition-cmake2"
 
 # Build ROS2 (all packages - you can trim later)
-RUN colcon build --symlink-install \
+RUN colcon build --symlink-install --parallel-workers $(nproc) \
     --cmake-args -DCMAKE_BUILD_TYPE=Release
 
 # Optional: Remove GUI packages for headless deployment (uncomment to save space)

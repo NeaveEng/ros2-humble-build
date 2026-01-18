@@ -6,7 +6,11 @@ set -e
 echo "Setting up Docker buildx for ARM64 builds..."
 
 # Create a new builder instance if it doesn't exist
-docker buildx create --name ros2-builder --use || docker buildx use ros2-builder
+if ! docker buildx inspect ros2-builder &> /dev/null; then
+    docker buildx create --name ros2-builder --use
+else
+    docker buildx use ros2-builder
+fi
 
 # Enable QEMU for ARM64 emulation
 docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
